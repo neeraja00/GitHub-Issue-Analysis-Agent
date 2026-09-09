@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: github-issue-analysis-agent
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEFAULT_LLM_PROVIDER
+        value: mock
+      - key: DEFAULT_DRY_RUN
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
