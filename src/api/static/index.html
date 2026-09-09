@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GitHub Issue Analysis Agent - Autonomous multi-step AI system for classifying, prioritizing, deduplicating, and reporting on GitHub issues.">
+  <title>GitHub Issue Analysis Agent — Autonomous AI Triage</title>
+  
+  <!-- Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <h1 class="brand-title">GitHub Issue Analysis Agent</h1>
+        <p class="brand-subtitle">Autonomous Multi-Step AI Triage & Reporting Engine</p>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div id="statusBadge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="statusText">System Ready</span>
+      </div>
+      <button id="btnOpenModal" class="btn btn-primary">
+        <span>⚡</span> New Triage Run
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Active Run Tracker & Stepper -->
+    <section class="progress-card" id="trackerCard">
+      <div class="progress-header">
+        <div>
+          <span class="progress-title" id="runTitle">Active Run: Initializing...</span>
+          <span id="runSubtext" style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.75rem;">Waiting for trigger</span>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+      <div class="stepper-steps">
+        <div class="step-node" id="step-init"><span class="step-circle">1</span> Init</div>
+        <div class="step-node" id="step-fetch"><span class="step-circle">2</span> Fetch</div>
+        <div class="step-node" id="step-classify"><span class="step-circle">3</span> Classify</div>
+        <div class="step-node" id="step-prioritize"><span class="step-circle">4</span> Prioritize</div>
+        <div class="step-node" id="step-deduplicate"><span class="step-circle">5</span> Deduplicate</div>
+        <div class="step-node" id="step-draft_action"><span class="step-circle">6</span> Draft Actions</div>
+        <div class="step-node" id="step-critique"><span class="step-circle">7</span> Critique</div>
+        <div class="step-node" id="step-report"><span class="step-circle">8</span> Report</div>
+      </div>
+    </section>
+
+    <!-- KPI Summary Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Analyzed Issues</div>
+        <div class="kpi-value" id="kpiAnalyzed">0</div>
+      </div>
+      <div class="kpi-card critical">
+        <div class="kpi-label">Critical Blockers</div>
+        <div class="kpi-value" id="kpiCritical">0</div>
+      </div>
+      <div class="kpi-card high">
+        <div class="kpi-label">High Priority</div>
+        <div class="kpi-value" id="kpiHigh">0</div>
+      </div>
+      <div class="kpi-card duplicate">
+        <div class="kpi-label">Duplicates Detected</div>
+        <div class="kpi-value" id="kpiDuplicates">0</div>
+      </div>
+      <div class="kpi-card closes">
+        <div class="kpi-label">Recommended Closes</div>
+        <div class="kpi-value" id="kpiCloses">0</div>
+      </div>
+    </section>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="tab-issues">📋 Triage Register</button>
+      <button class="tab-btn" data-tab="tab-duplicates">👥 Duplicate Graph</button>
+      <button class="tab-btn" data-tab="tab-report">📄 Markdown Report</button>
+      <button class="tab-btn" data-tab="tab-logs">📡 Agent Telemetry Logs</button>
+    </nav>
+
+    <!-- Tab 1: Issues Register -->
+    <section id="tab-issues" class="tab-content active">
+      <div class="filter-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search issues by title, #, or author...">
+        
+        <div class="pill-group" id="categoryPills">
+          <button class="pill-btn active" data-filter-cat="all">All Types</button>
+          <button class="pill-btn" data-filter-cat="bug">Bug</button>
+          <button class="pill-btn" data-filter-cat="feature_request">Feature</button>
+          <button class="pill-btn" data-filter-cat="question">Question</button>
+          <button class="pill-btn" data-filter-cat="documentation">Docs</button>
+          <button class="pill-btn" data-filter-cat="duplicate">Duplicate</button>
+          <button class="pill-btn" data-filter-cat="spam">Spam</button>
+        </div>
+
+        <div class="pill-group" id="priorityPills">
+          <button class="pill-btn active" data-filter-prio="all">All Priorities</button>
+          <button class="pill-btn" data-filter-prio="critical">Critical</button>
+          <button class="pill-btn" data-filter-prio="high">High</button>
+          <button class="pill-btn" data-filter-prio="medium">Medium</button>
+          <button class="pill-btn" data-filter-prio="low">Low</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 70px;">#</th>
+              <th>Issue Title & Author</th>
+              <th style="width: 130px;">Category</th>
+              <th style="width: 120px;">Priority</th>
+              <th>Recommended Action</th>
+              <th style="width: 110px; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="issuesTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                No triage data loaded. Click <strong>"New Triage Run"</strong> to analyze a repository.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tab 2: Duplicate Graph -->
+    <section id="tab-duplicates" class="tab-content">
+      <div id="duplicateContainer" class="duplicate-grid">
+        <div style="color: var(--text-muted); padding: 2rem; grid-column: 1 / -1;">
+          No duplicate clusters detected in current run.
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Markdown Report Preview -->
+    <section id="tab-report" class="tab-content">
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-bottom: 1rem;">
+        <button id="btnCopyReport" class="btn btn-secondary">📋 Copy Markdown</button>
+        <button id="btnDownloadMd" class="btn btn-secondary">💾 Download .MD</button>
+        <button id="btnDownloadJson" class="btn btn-primary">📦 Download .JSON</button>
+      </div>
+      <div id="reportPreview" class="terminal-window" style="background: var(--bg-surface); color: var(--text-primary); font-family: var(--font-main); font-size: 0.9rem; line-height: 1.7;">
+        Run a triage session to preview the generated Markdown report.
+      </div>
+    </section>
+
+    <!-- Tab 4: Agent Telemetry Logs -->
+    <section id="tab-logs" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Real-time agent execution stream (Tool calls, LLM latency & decisions)</span>
+        <button id="btnClearLogs" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem;">Clear</button>
+      </div>
+      <div id="logStream" class="terminal-window">
+        Waiting for agent run...
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Trigger New Run Modal -->
+  <div class="modal-overlay" id="runModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Launch Autonomous Triage Run</h3>
+        <button id="btnCloseModal" style="background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="repoInput">Target GitHub Repository</label>
+          <input type="text" id="repoInput" class="form-input" value="mock/demo-repo" placeholder="owner/repo">
+          <div class="quick-tags">
+            <span class="tag-pill" onclick="selectRepo('mock/demo-repo')">mock/demo-repo (Offline Demo)</span>
+            <span class="tag-pill" onclick="selectRepo('fastapi/fastapi')">fastapi/fastapi</span>
+            <span class="tag-pill" onclick="selectRepo('pallets/flask')">pallets/flask</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="goalInput">Triage Objective / Goal</label>
+          <textarea id="goalInput" class="form-textarea" rows="2">Triage open issues from the last 30 days and detect duplicates</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="limitInput">Max Issues</label>
+            <input type="number" id="limitInput" class="form-input" value="8" min="1" max="50">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="providerSelect">LLM Engine</label>
+            <select id="providerSelect" class="form-select">
+              <option value="mock">Mock Engine (Deterministic Offline)</option>
+              <option value="gemini">Google Gemini (google-genai)</option>
+              <option value="openai">OpenAI Compatible</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="dryRunCheck" checked style="accent-color: var(--accent-cyan);">
+            <span>Enable <strong>Dry-Run Mode</strong> (Recommended: simulates actions safely)</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelModal" class="btn btn-secondary">Cancel</button>
+        <button id="btnStartRun" class="btn btn-primary">🚀 Start Autonomous Agent</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side Drawer: Issue Detail Inspection -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <aside class="drawer" id="issueDrawer">
+    <div class="drawer-header">
+      <div>
+        <span id="drawerIssueNum" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 700;">#101</span>
+        <h3 id="drawerIssueTitle" style="font-size: 1rem; font-weight: 600; margin-top: 0.2rem;">Crash on startup</h3>
+      </div>
+      <button id="btnCloseDrawer" style="background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer;">✕</button>
+    </div>
+    <div class="drawer-content">
+      <div>
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">AI Classification & Priority</h4>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <span id="drawerCategoryBadge" class="badge badge-bug">Bug</span>
+          <span id="drawerPriorityBadge" class="prio-pill prio-critical">CRITICAL (94/100)</span>
+          <span id="drawerConfidence" style="font-size: 0.75rem; color: var(--text-muted);">95% confidence</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">Classification Reasoning</h4>
+        <p id="drawerReasoning" style="font-size: 0.875rem; color: var(--text-secondary);"></p>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">Recommended Action</h4>
+        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;" id="drawerActionHeadline"></div>
+        <p id="drawerActionReasoning" style="font-size: 0.85rem; color: var(--text-secondary);"></p>
+      </div>
+
+      <div id="drawerCommentSection">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted);">Drafted Maintainer Response</h4>
+          <button id="btnCopyComment" class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Copy Comment</button>
+        </div>
+        <div id="drawerCommentBox" class="quote-box"></div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">Proposed Labels to Apply</h4>
+        <div id="drawerLabels" style="display: flex; gap: 0.35rem; flex-wrap: wrap;"></div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">Original Issue Description</h4>
+        <div id="drawerIssueBody" class="quote-box" style="border-color: rgba(255, 255, 255, 0.2); font-style: normal; max-height: 250px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </aside>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
